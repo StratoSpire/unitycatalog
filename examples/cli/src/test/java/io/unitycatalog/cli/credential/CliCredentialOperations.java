@@ -32,6 +32,23 @@ public class CliCredentialOperations extends BaseCliOperations implements Creden
       argsList.add("--aws_iam_role_arn");
       argsList.add(createCredentialRequest.getAwsIamRole().getRoleArn());
     }
+    if (createCredentialRequest.getAwsAccessKey() != null
+        && createCredentialRequest.getAwsAccessKey().getAccessKeyId() != null) {
+      argsList.add("--aws_access_key_id");
+      argsList.add(createCredentialRequest.getAwsAccessKey().getAccessKeyId());
+      if (createCredentialRequest.getAwsAccessKey().getSecretAccessKey() != null) {
+        argsList.add("--aws_secret_access_key");
+        argsList.add(createCredentialRequest.getAwsAccessKey().getSecretAccessKey());
+      }
+      if (createCredentialRequest.getAwsAccessKey().getSessionToken() != null) {
+        argsList.add("--aws_session_token");
+        argsList.add(createCredentialRequest.getAwsAccessKey().getSessionToken());
+      }
+      if (createCredentialRequest.getAwsAccessKey().getServiceEndpoint() != null) {
+        argsList.add("--service_endpoint");
+        argsList.add(createCredentialRequest.getAwsAccessKey().getServiceEndpoint());
+      }
+    }
     return execute(CredentialInfo.class, "create", argsList);
   }
 
@@ -67,6 +84,23 @@ public class CliCredentialOperations extends BaseCliOperations implements Creden
         && updateCredentialRequest.getAwsIamRole().getRoleArn() != null) {
       argsList.add("--aws_iam_role_arn");
       argsList.add(updateCredentialRequest.getAwsIamRole().getRoleArn());
+    }
+    if (updateCredentialRequest.getAwsAccessKey() != null
+        && updateCredentialRequest.getAwsAccessKey().getAccessKeyId() != null) {
+      argsList.add("--aws_access_key_id");
+      argsList.add(updateCredentialRequest.getAwsAccessKey().getAccessKeyId());
+      if (updateCredentialRequest.getAwsAccessKey().getSecretAccessKey() != null) {
+        argsList.add("--aws_secret_access_key");
+        argsList.add(updateCredentialRequest.getAwsAccessKey().getSecretAccessKey());
+      }
+      if (updateCredentialRequest.getAwsAccessKey().getSessionToken() != null) {
+        argsList.add("--aws_session_token");
+        argsList.add(updateCredentialRequest.getAwsAccessKey().getSessionToken());
+      }
+      if (updateCredentialRequest.getAwsAccessKey().getServiceEndpoint() != null) {
+        argsList.add("--service_endpoint");
+        argsList.add(updateCredentialRequest.getAwsAccessKey().getServiceEndpoint());
+      }
     }
     return executeUpdate(
         CredentialInfo.class,
