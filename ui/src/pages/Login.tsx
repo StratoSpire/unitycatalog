@@ -1,24 +1,9 @@
-import { Flex, Layout, Typography } from 'antd';
-import React from 'react';
-import GoogleAuthButton from '../components/login/GoogleAuthButton';
-import OktaAuthButton from '../components/login/OktaAuthButton';
+import { Button, Flex, Layout, Typography } from 'antd';
+import { LoginOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/auth-context';
-import KeycloakAuthButton from '../components/login/KeycloakAuthButton';
-import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function LoginPage() {
-  const { loginWithToken } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from || '/';
-  const googleEnabled = process.env.REACT_APP_GOOGLE_AUTH_ENABLED === 'true';
-  const oktaEnabled = process.env.REACT_APP_OKTA_AUTH_ENABLED === 'true';
-  const keycloakEnabled =
-    process.env.REACT_APP_KEYCLOAK_AUTH_ENABLED === 'true';
-
-  const handleGoogleSignIn = async (idToken: string) => {
-    await loginWithToken(idToken).then(() => navigate(from, { replace: true }));
-  };
+  const { loginWithOidc } = useAuth();
 
   return (
     <Layout
@@ -45,7 +30,7 @@ export default function LoginPage() {
         </div>
         <div
           style={{
-            height: 276,
+            height: 200,
             width: 400,
             backgroundColor: '#F6F7F9',
             borderRadius: '16px',
@@ -56,24 +41,20 @@ export default function LoginPage() {
             align={'center'}
             justify={'center'}
             gap={'middle'}
-            style={{ padding: 24 }}
+            style={{ padding: 24, height: '100%' }}
           >
             <Typography.Title level={4}>
               Login to Unity Catalog
             </Typography.Title>
-            {googleEnabled && (
-              <GoogleAuthButton onGoogleSignIn={handleGoogleSignIn} />
-            )}
-            {oktaEnabled && (
-              <OktaAuthButton
-                onSuccess={(tokens: any) => console.log('tokens', tokens)}
-                onError={(error: Error) => console.log('error', error)}
-              />
-            )}
-            {keycloakEnabled && <KeycloakAuthButton />}
-            {!googleEnabled && !oktaEnabled && !keycloakEnabled && (
-              <Typography>Auth providers have not been enabled</Typography>
-            )}
+            <Button
+              type="primary"
+              size="large"
+              icon={<LoginOutlined />}
+              onClick={loginWithOidc}
+              style={{ width: 240 }}
+            >
+              Sign in with SSO
+            </Button>
           </Flex>
         </div>
       </Flex>

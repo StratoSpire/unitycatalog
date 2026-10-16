@@ -22,7 +22,7 @@ ENV MAVEN_PROXY_URL=${MAVEN_PROXY_URL}
 
 WORKDIR $HOME
 
-COPY --parents dev/ build/ project/ examples/ server/ api/ clients/ version.sbt build.sbt ./
+COPY --parents dev/ build/ project/ examples/ server/ api/ clients/ connectors/ version.sbt build.sbt ./
 
 RUN apk add --no-cache bash && ./build/sbt -info clean package
 
@@ -47,6 +47,7 @@ COPY --from=base --parents \
     $HOME/server/ \
     $HOME/api/ \
     $HOME/clients/ \
+    $HOME/connectors/ \
     $HOME/target/ \
     $HOME/.cache/ \
     /

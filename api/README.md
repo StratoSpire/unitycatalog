@@ -66,6 +66,8 @@ All URIs are relative to *http://localhost:8080/api/2.1/unity-catalog*
 <a name="documentation-for-models"></a>
 ## Documentation for Models
 
+ - [AwsAccessKeyRequest](./Models/AwsAccessKeyRequest.md)
+ - [AwsAccessKeyResponse](./Models/AwsAccessKeyResponse.md)
  - [AwsCredentials](./Models/AwsCredentials.md)
  - [AwsIamRoleRequest](./Models/AwsIamRoleRequest.md)
  - [AwsIamRoleResponse](./Models/AwsIamRoleResponse.md)

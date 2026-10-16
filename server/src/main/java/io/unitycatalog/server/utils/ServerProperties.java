@@ -422,8 +422,8 @@ public class ServerProperties {
       String secretKey = getProperty("s3.secretKey." + i);
       String sessionToken = getProperty("s3.sessionToken." + i);
       String credentialGenerator = getProperty("s3.credentialGenerator." + i);
-      if ((bucketPath == null || region == null || awsRoleArn == null)
-          && (accessKey == null || secretKey == null || sessionToken == null)) {
+      String serviceEndpoint = getProperty("s3.serviceEndpoint." + i);
+      if (bucketPath == null || (awsRoleArn == null && accessKey == null)) {
         break;
       }
       S3StorageConfig s3StorageConfig =
@@ -435,7 +435,28 @@ public class ServerProperties {
               .secretKey(secretKey)
               .sessionToken(sessionToken)
               .credentialGenerator(credentialGenerator)
+              .serviceEndpoint(serviceEndpoint)
               .build();
+      // Validate serviceEndpoint URL format if provided
+      try {
+        s3StorageConfig.validateServiceEndpoint();
+        if (serviceEndpoint != null && !serviceEndpoint.isEmpty()) {
+          LOGGER.info(
+              "S3-compatible storage configured: bucket={}, endpoint={}",
+              bucketPath,
+              serviceEndpoint);
+        } else {
+          LOGGER.info("AWS S3 storage configured: bucket={}", bucketPath);
+        }
+      } catch (IllegalArgumentException e) {
+        LOGGER.error(
+            "Invalid S3 configuration at index {}: {}. Server startup will fail.",
+            i,
+            e.getMessage());
+        throw new BaseException(
+            ErrorCode.INVALID_ARGUMENT,
+            "Invalid S3 service endpoint at index " + i + ": " + e.getMessage());
+      }
       s3BucketConfigMap.put(NormalizedURL.from(bucketPath), s3StorageConfig);
       i++;
     }

@@ -137,6 +137,9 @@ public class CredentialRepository {
           if (updateCredential.getAwsIamRole() != null) {
             existingCredential.setAwsIamRole(updateCredential.getAwsIamRole());
           }
+          if (updateCredential.getAwsAccessKey() != null) {
+            existingCredential.setAwsAccessKey(updateCredential.getAwsAccessKey());
+          }
           if (updateCredential.getComment() != null) {
             existingCredential.setComment(updateCredential.getComment());
           }

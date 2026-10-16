@@ -356,7 +356,13 @@ public class CliUtils {
                       CREATE,
                       new CliOptions(
                           List.of(CliParams.NAME),
-                          List.of(CliParams.COMMENT, CliParams.AWS_IAM_ROLE_ARN)));
+                          List.of(
+                              CliParams.COMMENT,
+                              CliParams.AWS_IAM_ROLE_ARN,
+                              CliParams.AWS_ACCESS_KEY_ID,
+                              CliParams.AWS_SECRET_ACCESS_KEY,
+                              CliParams.AWS_SESSION_TOKEN,
+                              CliParams.SERVICE_ENDPOINT)));
                   put(
                       LIST,
                       new CliOptions(
@@ -367,7 +373,13 @@ public class CliUtils {
                       new CliOptions(
                           List.of(CliParams.NAME),
                           List.of(
-                              CliParams.NEW_NAME, CliParams.COMMENT, CliParams.AWS_IAM_ROLE_ARN)));
+                              CliParams.NEW_NAME,
+                              CliParams.COMMENT,
+                              CliParams.AWS_IAM_ROLE_ARN,
+                              CliParams.AWS_ACCESS_KEY_ID,
+                              CliParams.AWS_SECRET_ACCESS_KEY,
+                              CliParams.AWS_SESSION_TOKEN,
+                              CliParams.SERVICE_ENDPOINT)));
                   put(DELETE, new CliOptions(List.of(CliParams.NAME), List.of(CliParams.FORCE)));
                 }
               });

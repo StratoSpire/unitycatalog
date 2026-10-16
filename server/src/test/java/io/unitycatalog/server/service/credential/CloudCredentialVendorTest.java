@@ -133,6 +133,25 @@ public class CloudCredentialVendorTest {
             () ->
                 vendCredential("s3://storageBase/abc", Set.of(CredentialContext.Privilege.SELECT)))
         .isInstanceOf(StsException.class);
+
+    // Test MinIO: serviceEndpoint + static keys, empty sessionToken -> StaticGenerator, no STS call
+    when(serverProperties.getS3Configurations())
+        .thenReturn(
+            Map.of(
+                NormalizedURL.from("s3://storageBase"),
+                S3StorageConfig.builder()
+                    .accessKey(ACCESS_KEY)
+                    .secretKey(SECRET_KEY)
+                    .sessionToken("")
+                    .serviceEndpoint("https://minio.example.com")
+                    .build()));
+    awsCredentialVendor = new AwsCredentialVendor(serverProperties);
+    credentialsOperations = new CloudCredentialVendor(awsCredentialVendor, null, null);
+    TemporaryCredentials minioCredentials =
+        vendCredential("s3://storageBase/abc", Set.of(CredentialContext.Privilege.SELECT));
+    assertThat(minioCredentials.getAwsTempCredentials().getAccessKeyId()).isEqualTo(ACCESS_KEY);
+    assertThat(minioCredentials.getAwsTempCredentials().getSecretAccessKey()).isEqualTo(SECRET_KEY);
+    assertThat(minioCredentials.getServiceEndpoint()).isEqualTo("https://minio.example.com");
   }
 
   @Test

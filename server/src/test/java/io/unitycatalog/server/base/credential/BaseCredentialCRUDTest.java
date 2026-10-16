@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import io.unitycatalog.client.ApiException;
+import io.unitycatalog.client.model.AwsAccessKeyRequest;
 import io.unitycatalog.client.model.AwsIamRoleRequest;
 import io.unitycatalog.client.model.CreateCredentialRequest;
 import io.unitycatalog.client.model.CreateExternalLocation;
@@ -105,6 +106,57 @@ public abstract class BaseCredentialCRUDTest extends BaseCRUDTest {
     // Delete storage credential
     credentialOperations.deleteCredential(NEW_CREDENTIAL_NAME, Optional.empty());
     assertThatThrownBy(() -> credentialOperations.getCredential(NEW_CREDENTIAL_NAME))
+        .isInstanceOf(ApiException.class);
+  }
+
+  @Test
+  public void testAccessKeyCredentialCRUD() throws ApiException {
+    String accessKeyName = "uc_testaccesskey";
+    String accessKeyId = "minioadmin";
+    String secretAccessKey = "minioadmin-secret";
+    String serviceEndpoint = "http://minio.example.com:9000";
+
+    // Create an S3-compatible access key credential (e.g. MinIO).
+    CreateCredentialRequest createCredentialRequest =
+        new CreateCredentialRequest()
+            .name(accessKeyName)
+            .comment(COMMENT)
+            .purpose(CredentialPurpose.STORAGE)
+            .awsAccessKey(
+                new AwsAccessKeyRequest()
+                    .accessKeyId(accessKeyId)
+                    .secretAccessKey(secretAccessKey)
+                    .serviceEndpoint(serviceEndpoint));
+
+    CredentialInfo credentialInfo = credentialOperations.createCredential(createCredentialRequest);
+    assertThat(credentialInfo.getName()).isEqualTo(accessKeyName);
+    assertThat(credentialInfo.getComment()).isEqualTo(COMMENT);
+    assertThat(credentialInfo.getPurpose()).isEqualTo(CredentialPurpose.STORAGE);
+    // The public response exposes the access key id and endpoint but never the secret.
+    assertThat(credentialInfo.getAwsAccessKey()).isNotNull();
+    assertThat(credentialInfo.getAwsAccessKey().getAccessKeyId()).isEqualTo(accessKeyId);
+    assertThat(credentialInfo.getAwsAccessKey().getServiceEndpoint()).isEqualTo(serviceEndpoint);
+
+    // Get storage credential
+    assertThat(credentialOperations.getCredential(accessKeyName)).isEqualTo(credentialInfo);
+
+    // Update storage credential (rotate the secret, keep the same access key id)
+    UpdateCredentialRequest updateCredentialRequest =
+        new UpdateCredentialRequest()
+            .comment(COMMENT2)
+            .awsAccessKey(
+                new AwsAccessKeyRequest()
+                    .accessKeyId(accessKeyId)
+                    .secretAccessKey("rotated-secret"));
+
+    CredentialInfo updatedCredentialInfo =
+        credentialOperations.updateCredential(accessKeyName, updateCredentialRequest);
+    assertThat(updatedCredentialInfo.getComment()).isEqualTo(COMMENT2);
+    assertThat(updatedCredentialInfo.getAwsAccessKey().getAccessKeyId()).isEqualTo(accessKeyId);
+
+    // Delete storage credential
+    credentialOperations.deleteCredential(accessKeyName, Optional.empty());
+    assertThatThrownBy(() -> credentialOperations.getCredential(accessKeyName))
         .isInstanceOf(ApiException.class);
   }
 

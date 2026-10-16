@@ -175,7 +175,7 @@ public class VolumeCli {
     URI relativeURI = resolveURI(baseURI, relativePath);
     Configuration conf =
         DeltaKernelUtils.getHDFSConfiguration(
-            relativeURI,
+            baseURI,
             tempCredApi.generateTemporaryVolumeCredentials(
                 new GenerateTemporaryVolumeCredential()
                     .volumeId(volumeInfo.getVolumeId())

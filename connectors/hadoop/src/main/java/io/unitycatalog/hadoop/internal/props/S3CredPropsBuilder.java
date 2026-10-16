@@ -46,6 +46,7 @@ final class S3CredPropsBuilder extends CredPropsBuilder {
     set(UCHadoopConfConstants.S3A_INIT_ACCESS_KEY, aws.accessKeyId());
     set(UCHadoopConfConstants.S3A_INIT_SECRET_KEY, aws.secretAccessKey());
     set(UCHadoopConfConstants.S3A_INIT_SESSION_TOKEN, aws.sessionToken());
+    setServiceEndpointIfPresent(aws);
     // Expiration may be absent (e.g. a static token provider), so write the key only when set.
     if (aws.expirationTimeMillis() != null) {
       set(
@@ -64,5 +65,17 @@ final class S3CredPropsBuilder extends CredPropsBuilder {
     set(S3A_ACCESS_KEY, aws.accessKeyId());
     set(S3A_SECRET_KEY, aws.secretAccessKey());
     set(S3A_SESSION_TOKEN, aws.sessionToken());
+    setServiceEndpointIfPresent(aws);
+  }
+
+  /**
+   * Points the S3A filesystem at the vended S3-compatible endpoint (MinIO, Wasabi, etc.) when the
+   * credential carries one. Absent for AWS S3, so no endpoint key is written.
+   */
+  private void setServiceEndpointIfPresent(AwsCredential aws) {
+    String endpoint = aws.serviceEndpoint();
+    if (endpoint != null && !endpoint.isEmpty()) {
+      set("fs.s3a.endpoint", endpoint);
+    }
   }
 }

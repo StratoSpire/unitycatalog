@@ -48,7 +48,8 @@ public final class CredentialUtil {
           aws.getSecretAccessKey(),
           aws.getSessionToken(),
           expiry,
-          tempCred.getUrl());
+          tempCred.getUrl(),
+          tempCred.getServiceEndpoint());
     } else if (tempCred.getAzureUserDelegationSas() != null) {
       return new AzureCredential(
           tempCred.getAzureUserDelegationSas().getSasToken(), expiry, tempCred.getUrl());

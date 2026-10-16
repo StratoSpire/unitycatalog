@@ -40,9 +40,13 @@ public interface AwsCredentialGenerator {
     private final String sessionToken;
 
     public StaticAwsCredentialGenerator(S3StorageConfig config) {
-      this.accessKeyId = config.getAccessKey();
-      this.secretKey = config.getSecretKey();
-      this.sessionToken = config.getSessionToken();
+      this(config.getAccessKey(), config.getSecretKey(), config.getSessionToken());
+    }
+
+    public StaticAwsCredentialGenerator(String accessKeyId, String secretKey, String sessionToken) {
+      this.accessKeyId = accessKeyId;
+      this.secretKey = secretKey;
+      this.sessionToken = sessionToken;
     }
 
     @Override
@@ -50,7 +54,7 @@ public interface AwsCredentialGenerator {
       return Credentials.builder()
           .accessKeyId(accessKeyId)
           .secretAccessKey(secretKey)
-          .sessionToken(sessionToken)
+          .sessionToken(sessionToken != null ? sessionToken : "")
           .build();
     }
   }

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.unitycatalog.server.exception.BaseException;
 import io.unitycatalog.server.exception.ErrorCode;
+import io.unitycatalog.server.model.AwsAccessKeyRequest;
+import io.unitycatalog.server.model.AwsAccessKeyResponse;
 import io.unitycatalog.server.model.AwsIamRoleRequest;
 import io.unitycatalog.server.model.AwsIamRoleResponse;
 import io.unitycatalog.server.model.CreateCredentialRequest;
@@ -50,6 +52,7 @@ public class CredentialDAO extends IdentifiableDAO {
 
   public enum CredentialType {
     AWS_IAM_ROLE,
+    AWS_ACCESS_KEY,
     // Add other types as necessary
   }
 
@@ -103,6 +106,8 @@ public class CredentialDAO extends IdentifiableDAO {
             .build();
     if (createRequest.getAwsIamRole() != null) {
       dao.setAwsIamRole(createRequest.getAwsIamRole());
+    } else if (createRequest.getAwsAccessKey() != null) {
+      dao.setAwsAccessKey(createRequest.getAwsAccessKey());
     } else {
       throw new IllegalArgumentException("Unknown credential type");
     }
@@ -126,6 +131,15 @@ public class CredentialDAO extends IdentifiableDAO {
         AwsIamRoleResponse awsIamRole = parseCredential(AwsIamRoleResponse.class);
         masterAwsIamRoleArn.ifPresent(awsIamRole::setUnityCatalogIamArn);
         credentialInfo.setAwsIamRole(awsIamRole);
+        break;
+      case AWS_ACCESS_KEY:
+        // The secret is only persisted; the public response never exposes it.
+        AwsAccessKeyRequest awsAccessKey =
+            parseCredential(CredentialType.AWS_ACCESS_KEY, AwsAccessKeyRequest.class);
+        credentialInfo.setAwsAccessKey(
+            new AwsAccessKeyResponse()
+                .accessKeyId(awsAccessKey.getAccessKeyId())
+                .serviceEndpoint(awsAccessKey.getServiceEndpoint()));
         break;
       // TODO: support Azure and GCP.
       default:
@@ -157,6 +171,13 @@ public class CredentialDAO extends IdentifiableDAO {
     setCredential(CredentialType.AWS_IAM_ROLE, fromAwsIamRoleRequest(awsIamRole));
   }
 
+  /**
+   * Persists an S3-compatible access key credential. The secret is stored in the credential blob.
+   */
+  public void setAwsAccessKey(AwsAccessKeyRequest awsAccessKey) {
+    setCredential(CredentialType.AWS_ACCESS_KEY, awsAccessKey);
+  }
+
   private <T> void setCredential(CredentialType type, T inputCredential) {
     credentialType = type;
     try {
@@ -176,5 +197,13 @@ public class CredentialDAO extends IdentifiableDAO {
 
   public AwsIamRoleResponse getAwsIamRoleResponse() {
     return parseCredential(CredentialType.AWS_IAM_ROLE, AwsIamRoleResponse.class);
+  }
+
+  /**
+   * Returns the persisted access key credential, including the secret, for the credential vending
+   * path. This must not be exposed through the API (see {@link #toCredentialInfo}).
+   */
+  public AwsAccessKeyRequest getAwsAccessKeyRequest() {
+    return parseCredential(CredentialType.AWS_ACCESS_KEY, AwsAccessKeyRequest.class);
   }
 }

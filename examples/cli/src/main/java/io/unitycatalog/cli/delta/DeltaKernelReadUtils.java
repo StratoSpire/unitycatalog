@@ -24,6 +24,7 @@ import io.delta.kernel.types.LongType;
 import io.delta.kernel.types.ShortType;
 import io.delta.kernel.types.StringType;
 import io.delta.kernel.types.StructType;
+import io.delta.kernel.types.TimestampNTZType;
 import io.delta.kernel.types.TimestampType;
 import io.delta.kernel.utils.CloseableIterator;
 import io.delta.kernel.utils.FileStatus;
@@ -85,6 +86,16 @@ public class DeltaKernelReadUtils {
           LocalDateTime.ofEpochSecond(
               microSecsSinceEpochUTC / 1_000_000 /* epochSecond */,
               (int) (1000 * microSecsSinceEpochUTC % 1_000_000) /* nanoOfSecond */,
+              ZoneOffset.UTC);
+      return dateTime.toString();
+    } else if (dataType instanceof TimestampNTZType) {
+      // TimestampNTZType (timestamp without timezone) data is stored internally as the number of
+      // microseconds since epoch, but interpreted as local time without timezone conversion
+      long microSecsSinceEpoch = row.getLong(columnOrdinal);
+      LocalDateTime dateTime =
+          LocalDateTime.ofEpochSecond(
+              microSecsSinceEpoch / 1_000_000 /* epochSecond */,
+              (int) (1000 * microSecsSinceEpoch % 1_000_000) /* nanoOfSecond */,
               ZoneOffset.UTC);
       return dateTime.toString();
     } else if (dataType instanceof FloatType) {

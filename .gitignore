@@ -3,6 +3,10 @@ etc/db/h2db.trace.db
 mlflow.db
 target/
 
+# Derby metastore
+derby.log
+metastore_db/
+
 # Intellij IDEA files
 .idea/
 *.iml
@@ -54,3 +58,12 @@ __pycache__
 dist/
 *.egg-info/
 Pipfile
+
+# Local configuration files with secrets
+*.local
+etc/conf/server.properties.local
+
+# Speckit development tooling (keep local, don't commit)
+.specify/
+specs/
+.github/copilot-instructions.md

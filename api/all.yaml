@@ -2661,6 +2661,13 @@ components:
             The API client is advised to cache the credential given this expiration time.
           type: integer
           format: int64
+        service_endpoint:
+          description: |
+            Optional S3-compatible service endpoint URL (e.g., https://minio.example.com:9000).
+            When present, clients should configure their S3 client to use this endpoint instead of AWS S3.
+            When null or absent, clients should use the default AWS S3 endpoint.
+            This field is only populated for S3-compatible storage backends (MinIO, Wasabi, etc.).
+          type: string
         url:
           description: The normalized URL of the storage path the temporary credential was generated for.
           type: string
@@ -2804,6 +2811,8 @@ components:
           type: string
         aws_iam_role:
           $ref: '#/components/schemas/AwsIamRoleResponse'
+        aws_access_key:
+          $ref: '#/components/schemas/AwsAccessKeyResponse'
         comment:
           description: Comment associated with the credential.
           type: string
@@ -2845,6 +2854,8 @@ components:
           type: string
         aws_iam_role:
           $ref: '#/components/schemas/AwsIamRoleRequest'
+        aws_access_key:
+          $ref: '#/components/schemas/AwsAccessKeyRequest'
         purpose:
           $ref: "#/components/schemas/CredentialPurpose"
     UpdateCredentialRequest:
@@ -2858,6 +2869,8 @@ components:
           type: string
         aws_iam_role:
           $ref: '#/components/schemas/AwsIamRoleRequest'
+        aws_access_key:
+          $ref: '#/components/schemas/AwsAccessKeyRequest'
         new_name:
           description: New name for the credential.
           type: string
@@ -2883,6 +2896,35 @@ components:
           type: string
         external_id:
           description: The external ID used in role assumption to prevent confused deputy problem.
+          type: string
+    AwsAccessKeyRequest:
+      type: object
+      required:
+        - access_key_id
+        - secret_access_key
+      properties:
+        access_key_id:
+          description: The access key ID used to authenticate against the S3-compatible endpoint.
+          type: string
+        secret_access_key:
+          description: The secret access key used to authenticate against the S3-compatible endpoint.
+          type: string
+        session_token:
+          description: An optional session token associated with the access key, if any.
+          type: string
+        service_endpoint:
+          description: The endpoint of the S3-compatible object store that this credential is valid for.
+          type: string
+    AwsAccessKeyResponse:
+      type: object
+      required:
+        - access_key_id
+      properties:
+        access_key_id:
+          description: The access key ID used to authenticate against the S3-compatible endpoint.
+          type: string
+        service_endpoint:
+          description: The endpoint of the S3-compatible object store that this credential is valid for.
           type: string
     ListCredentialsResponse:
       type: object

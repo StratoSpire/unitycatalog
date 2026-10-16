@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   Avatar,
   ConfigProvider,
@@ -27,17 +27,20 @@ import SchemaDetails from './pages/SchemaDetails';
 import { NotificationProvider } from './utils/NotificationContext';
 import ModelDetails from './pages/ModelDetails';
 import Login from './pages/Login';
+import OidcCallback from './pages/OidcCallback';
 import { AuthProvider, useAuth } from './context/auth-context';
 import { UserOutlined } from '@ant-design/icons';
 import ModelVersionDetails from './pages/ModelVersionDetails';
 
-// TODO:
-// As of [19/02/2025], this implementation should be updated once the following PR are merged.
-// SEE:
-// https://github.com/unitycatalog/unitycatalog/pull/809
-const authEnabled = process.env.REACT_APP_GOOGLE_AUTH_ENABLED === 'true';
-
 const router = createBrowserRouter([
+  {
+    path: '/callback',
+    element: (
+      <AuthProvider>
+        <OidcCallback />
+      </AuthProvider>
+    ),
+  },
   {
     element: <AppProvider />,
     children: [
@@ -78,7 +81,7 @@ const router = createBrowserRouter([
 ]);
 
 function AppProvider() {
-  const { logout, currentUser } = useAuth();
+  const { logout, currentUser, authEnabled } = useAuth();
   const navigate = useNavigate();
 
   const profileMenuItems = useMemo(
@@ -213,23 +216,17 @@ function AppProvider() {
   );
 }
 
-function App() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { staleTime: QUERY_STALE_TIME } },
-  });
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: QUERY_STALE_TIME } },
+});
 
-  return authEnabled ? (
+function App() {
+  return (
     <NotificationProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <RouterProvider router={router} fallbackElement={<p>Loading...</p>} />
         </AuthProvider>
-      </QueryClientProvider>
-    </NotificationProvider>
-  ) : (
-    <NotificationProvider>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} fallbackElement={<p>Loading...</p>} />
       </QueryClientProvider>
     </NotificationProvider>
   );

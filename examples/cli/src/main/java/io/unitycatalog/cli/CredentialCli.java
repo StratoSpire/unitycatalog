@@ -9,6 +9,7 @@ import io.unitycatalog.cli.utils.CliUtils;
 import io.unitycatalog.client.ApiClient;
 import io.unitycatalog.client.ApiException;
 import io.unitycatalog.client.api.CredentialsApi;
+import io.unitycatalog.client.model.AwsAccessKeyRequest;
 import io.unitycatalog.client.model.AwsIamRoleRequest;
 import io.unitycatalog.client.model.CreateCredentialRequest;
 import io.unitycatalog.client.model.CredentialInfo;
@@ -63,6 +64,20 @@ public class CredentialCli {
     }
   }
 
+  private static Optional<AwsAccessKeyRequest> extractAwsAccessKey(JSONObject json) {
+    if (json.has(CliParams.AWS_ACCESS_KEY_ID.getServerParam())) {
+      return Optional.of(
+          new AwsAccessKeyRequest()
+              .accessKeyId(json.getString(CliParams.AWS_ACCESS_KEY_ID.getServerParam()))
+              .secretAccessKey(
+                  json.optString(CliParams.AWS_SECRET_ACCESS_KEY.getServerParam(), null))
+              .sessionToken(json.optString(CliParams.AWS_SESSION_TOKEN.getServerParam(), null))
+              .serviceEndpoint(json.optString(CliParams.SERVICE_ENDPOINT.getServerParam(), null)));
+    } else {
+      return Optional.empty();
+    }
+  }
+
   private static String createCredential(CredentialsApi credentialsApi, JSONObject json)
       throws JsonProcessingException, ApiException {
     CreateCredentialRequest createCredentialRequest =
@@ -70,7 +85,8 @@ public class CredentialCli {
             .name(json.getString(CliParams.NAME.getServerParam()))
             .comment(json.optString(CliParams.COMMENT.getServerParam(), null))
             .purpose(CredentialPurpose.STORAGE)
-            .awsIamRole(extractAwsIamRole(json).orElse(null));
+            .awsIamRole(extractAwsIamRole(json).orElse(null))
+            .awsAccessKey(extractAwsAccessKey(json).orElse(null));
     CredentialInfo credentialInfo = credentialsApi.createCredential(createCredentialRequest);
     return objectWriter.writeValueAsString(credentialInfo);
   }
@@ -101,7 +117,8 @@ public class CredentialCli {
         new UpdateCredentialRequest()
             .newName(json.optString(CliParams.NEW_NAME.getServerParam(), null))
             .comment(json.optString(CliParams.COMMENT.getServerParam(), null))
-            .awsIamRole(extractAwsIamRole(json).orElse(null));
+            .awsIamRole(extractAwsIamRole(json).orElse(null))
+            .awsAccessKey(extractAwsAccessKey(json).orElse(null));
     CredentialInfo credentialInfo = credentialsApi.updateCredential(name, updateCredentialRequest);
     return objectWriter.writeValueAsString(credentialInfo);
   }

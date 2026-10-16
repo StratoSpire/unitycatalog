@@ -2,15 +2,21 @@ package io.unitycatalog.server.service.credential.aws;
 
 import io.unitycatalog.server.exception.BaseException;
 import io.unitycatalog.server.exception.ErrorCode;
+import io.unitycatalog.server.model.AwsAccessKeyRequest;
 import io.unitycatalog.server.model.AwsIamRoleRequest;
 import io.unitycatalog.server.model.AwsIamRoleResponse;
+import io.unitycatalog.server.persist.dao.CredentialDAO;
 import io.unitycatalog.server.service.credential.CredentialContext;
 import io.unitycatalog.server.utils.NormalizedURL;
 import io.unitycatalog.server.utils.ServerProperties;
+import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -56,6 +62,8 @@ import software.amazon.awssdk.services.sts.model.Credentials;
  * </ol>
  */
 public class AwsCredentialVendor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AwsCredentialVendor.class);
 
   private final Map<NormalizedURL, S3StorageConfig> perBucketS3Configs;
   private final Map<NormalizedURL, AwsCredentialGenerator> perBucketCredGenerators =
@@ -111,12 +119,27 @@ public class AwsCredentialVendor {
       }
     }
 
-    if (config.getSessionToken() != null && !config.getSessionToken().isEmpty()) {
-      // if a session token was supplied, then we will just return static session credentials
+    if ((config.getSessionToken() != null && !config.getSessionToken().isEmpty())
+        || (config.getServiceEndpoint() != null
+            && !config.getServiceEndpoint().isEmpty()
+            && config.getAccessKey() != null
+            && !config.getAccessKey().isEmpty())) {
       return new AwsCredentialGenerator.StaticAwsCredentialGenerator(config);
     }
 
-    return createStsCredentialGenerator(config);
+    StsClientBuilder builder = stsClientBuilderSupplier.get();
+    // Set service endpoint override for S3-compatible services like MinIO
+    if (config.getServiceEndpoint() != null && !config.getServiceEndpoint().isEmpty()) {
+      builder.endpointOverride(URI.create(config.getServiceEndpoint()));
+      LOGGER.debug(
+          "Using custom STS endpoint for bucket {}: {}",
+          config.getBucketPath(),
+          config.getServiceEndpoint());
+    } else {
+      LOGGER.debug("Using AWS STS endpoint for bucket: {}", config.getBucketPath());
+    }
+
+    return new AwsCredentialGenerator.StsAwsCredentialGenerator(builder, config);
   }
 
   private AwsCredentialGenerator createStsCredentialGenerator(S3StorageConfig config) {
@@ -126,7 +149,17 @@ public class AwsCredentialVendor {
 
   public Credentials vendAwsCredentials(CredentialContext context) {
     AwsCredentialGenerator generator;
-    if (context.getCredentialDAO().isPresent()) {
+    Optional<CredentialDAO> credentialDAO = context.getCredentialDAO();
+    if (credentialDAO.isPresent()
+        && credentialDAO.get().getCredentialType() == CredentialDAO.CredentialType.AWS_ACCESS_KEY) {
+      // Access key credentials (S3-compatible stores like MinIO): vend the static key, no STS.
+      AwsAccessKeyRequest accessKey = credentialDAO.get().getAwsAccessKeyRequest();
+      generator =
+          new AwsCredentialGenerator.StaticAwsCredentialGenerator(
+              accessKey.getAccessKeyId(),
+              accessKey.getSecretAccessKey(),
+              accessKey.getSessionToken());
+    } else if (credentialDAO.isPresent()) {
       // Use the master role STS generator
       generator = getAwsS3MasterRoleStsGenerator();
     } else {
@@ -141,5 +174,29 @@ public class AwsCredentialVendor {
               context.getStorageBase(), storageBase -> createPerBucketCredentialGenerator(config));
     }
     return generator.generate(context);
+  }
+
+  /**
+   * Retrieves the service endpoint URL for the given storage context.
+   *
+   * @param context The credential context containing storage information
+   * @return The service endpoint URL if configured, null otherwise
+   */
+  public String getServiceEndpoint(CredentialContext context) {
+    Optional<CredentialDAO> credentialDAO = context.getCredentialDAO();
+    if (credentialDAO.isPresent()
+        && credentialDAO.get().getCredentialType() == CredentialDAO.CredentialType.AWS_ACCESS_KEY) {
+      // The access key credential may pin the endpoint (e.g. MinIO), which takes precedence
+      // over any per-bucket config so the requesting client hits the right store.
+      String credentialEndpoint = credentialDAO.get().getAwsAccessKeyRequest().getServiceEndpoint();
+      if (credentialEndpoint != null && !credentialEndpoint.isEmpty()) {
+        return credentialEndpoint;
+      }
+    }
+    S3StorageConfig config = perBucketS3Configs.get(context.getStorageBase());
+    if (config == null) {
+      return null;
+    }
+    return config.getServiceEndpoint();
   }
 }

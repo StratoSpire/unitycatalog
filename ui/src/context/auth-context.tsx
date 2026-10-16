@@ -7,19 +7,23 @@ import {
 } from '../hooks/user';
 import { GrantType, TokenType } from '../types/api/control.gen';
 import { useNotification } from '../utils/NotificationContext';
+import { getUserManager } from './oidc';
+import { getConfig } from '../config';
 
 interface AuthContextProps {
-  accessToken: any;
-  loginWithToken: any;
-  logout: any;
   currentUser: UserInterface | null;
+  loginWithOidc: () => void;
+  loginWithToken: (idToken: string) => Promise<void>;
+  logout: () => Promise<void>;
+  authEnabled: boolean;
 }
 
 const AuthContext = React.createContext<AuthContextProps>({
-  accessToken: null,
-  loginWithToken: null,
-  logout: null,
   currentUser: null,
+  loginWithOidc: () => {},
+  loginWithToken: async () => {},
+  logout: async () => {},
+  authEnabled: false,
 });
 AuthContext.displayName = 'AuthContext';
 
@@ -28,28 +32,29 @@ function AuthProvider(props: any) {
   const loginWithTokenMutation = useLoginWithToken();
   const logoutUser = useLogoutCurrentUser();
   const { setNotification } = useNotification();
+  const authEnabled = getConfig().authEnabled;
+
+  const loginWithOidc = useCallback(async () => {
+    const userManager = await getUserManager();
+    userManager.signinRedirect();
+  }, []);
 
   const loginWithToken = useCallback(
     async (idToken: string) => {
-      return loginWithTokenMutation.mutate(
-        {
+      try {
+        await loginWithTokenMutation.mutateAsync({
           grant_type: GrantType.TOKEN_EXCHANGE,
           requested_token_type: TokenType.ACCESS_TOKEN,
           subject_token_type: TokenType.ID_TOKEN,
           subject_token: idToken,
-        },
-        {
-          onSuccess: () => {
-            refetch();
-          },
-          onError: () => {
-            setNotification(
-              'Login failed. Please contact your system administrator.',
-              'error',
-            );
-          },
-        },
-      );
+        });
+        await refetch();
+      } catch {
+        setNotification(
+          'Login failed. Please contact your system administrator.',
+          'error',
+        );
+      }
     },
     [loginWithTokenMutation, setNotification, refetch],
   );
@@ -58,8 +63,16 @@ function AuthProvider(props: any) {
     return logoutUser.mutate(
       {},
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           refetch();
+          if (authEnabled) {
+            try {
+              const userManager = await getUserManager();
+              userManager.removeUser();
+            } catch {
+              // OIDC cleanup is best-effort
+            }
+          }
         },
         onError: () => {
           setNotification(
@@ -69,15 +82,17 @@ function AuthProvider(props: any) {
         },
       },
     );
-  }, [refetch, logoutUser, setNotification]);
+  }, [refetch, logoutUser, setNotification, authEnabled]);
 
   const value = useMemo(
     () => ({
+      loginWithOidc,
       loginWithToken,
       logout,
       currentUser,
+      authEnabled,
     }),
-    [loginWithToken, logout, currentUser],
+    [loginWithOidc, loginWithToken, logout, currentUser, authEnabled],
   );
 
   return <AuthContext.Provider value={value} {...props} />;
