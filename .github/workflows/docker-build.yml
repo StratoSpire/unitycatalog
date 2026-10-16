@@ -6,6 +6,7 @@ on:
       - "v*"
     branches:
       - main
+      - stratospire
     paths:
       - build/**
       - project/**
@@ -13,12 +14,15 @@ on:
       - server/**
       - api/**
       - clients/**
+      - connectors/**
       - version.sbt
       - build.sbt
       - Dockerfile
+      - .github/workflows/docker-build.yml
   pull_request:
     branches:
       - main
+      - stratospire
     paths:
       - build/**
       - project/**
@@ -26,18 +30,23 @@ on:
       - server/**
       - api/**
       - clients/**
+      - connectors/**
       - version.sbt
       - build.sbt
       - Dockerfile
+      - .github/workflows/docker-build.yml
   workflow_dispatch: {}
 
 env:
-  IMAGE: unitycatalog/unitycatalog
+  IMAGE: ghcr.io/stratospire/unitycatalog
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   docker-cli-test:
     name: Docker CLI Sanity Check
-    if: false  # Disabled to prevent supply chain attacks; remove this line to restore
     runs-on: ubuntu-latest
 
     steps:
@@ -64,7 +73,6 @@ jobs:
 
   build-and-push:
     needs: docker-cli-test
-    if: false  # Disabled to prevent supply chain attacks; remove this line to restore
     runs-on: ubuntu-latest
 
     steps:
@@ -78,9 +86,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-        # Will generate tags for the image
-        # For ref/tags/*: latest, <tag>
-        # For refs/heads/main: main, main-<short-sha>
+        # Will generate tags for the image.
+        # For refs/tags/*: the tag itself (e.g. v0.7.0)
+        # For refs/heads/stratospire: "stratospire", "stratospire-<short-sha>"
+        # For refs/heads/main: "main", "main-<short-sha>"
       - name: Generate Metadata and Tags
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
@@ -89,24 +98,26 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=tag
-            type=sha,enable=${{ github.ref == 'refs/heads/main' }},prefix={{branch}}-
+            type=sha,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stratospire' }},prefix={{branch}}-
 
-      - name: Login to Docker Hub
-        if: ${{ contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name) && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main') }}
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
-        if: ${{ contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name) && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main') }}
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
-          # Push only tagged releases to registry. Eg. the git ref
-          # "refs/tags/v0.2.0" would result the tagged image
-          # "unitycatalog/unitycatalog:v0.2.0".
-          # See here for more info: https://tinyurl.com/yh8252m2
+          # Push only for tag pushes and branch pushes (not PRs). The image is
+          # tagged from `steps.meta.outputs.tags`; e.g. a push to stratospire
+          # at short SHA 70ab5691 produces:
+          #   ghcr.io/stratospire/unitycatalog:stratospire
+          #   ghcr.io/stratospire/unitycatalog:stratospire-70ab5691
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
