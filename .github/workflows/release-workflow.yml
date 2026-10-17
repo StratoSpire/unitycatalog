@@ -2,12 +2,14 @@ name: Release Workflow
 
 on:
   push:
+    tags:
+      - "v*"
     branches:
       - stratospire
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -30,3 +32,21 @@ jobs:
           name: unitycatalog
           path: target/unitycatalog-*.tar.gz
           if-no-files-found: error
+
+      # On a `v*` tag push, publish a GitHub Release and attach the tarball.
+      # Idempotent: an existing release for the tag is deleted first so re-runs
+      # don't 422. Uses the workflow's own GITHUB_TOKEN (contents: write).
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          TARBALL=$(ls target/unitycatalog-*.tar.gz | head -1)
+
+          gh release delete "$TAG" --yes --cleanup-tag=false || true
+          gh release create "$TAG" "$TARBALL" \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag

@@ -86,10 +86,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
+      - name: Determine version
+        id: version
+        run: |
+          VERSION=$(grep -oP '(?<=version := ")[^"]+' version.sbt || true)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
         # Will generate tags for the image.
-        # For refs/tags/*: the tag itself (e.g. v0.7.0)
+        # For refs/tags/*: the tag itself (e.g. v0.7.0-stratospire.1)
         # For refs/heads/stratospire: "stratospire", "stratospire-<short-sha>"
         # For refs/heads/main: "main", "main-<short-sha>"
+        # Plus the gitops style immutable "<version>-<8char sha>" and a moving
+        # "<version>" tag (e.g. "0.7.0-e3184287", "0.7.0").
       - name: Generate Metadata and Tags
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
@@ -99,6 +108,8 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stratospire' }},prefix={{branch}}-
+            type=raw,value=${{ steps.version.outputs.version }}-${{ steps.version.outputs.sha }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
